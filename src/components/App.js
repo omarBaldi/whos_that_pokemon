@@ -1,19 +1,19 @@
 import React from "react";
 import { useEffect } from "react";
 import { useState } from "react";
-import PokeClient from "./PokeClient";
+import { pokeClient } from "./PokeClient";
 import Game from "./Game";
 import "./styles.css";
 
-function Main() {
+const GEN_1_POKEMONS = 151;
+
+function App() {
 	const [pokemonData, setPokemonData] = useState({});
 	const [isLoading, setIsLoading] = useState(true);
 
-	const pokeClient = new PokeClient();
-
 	useEffect(() => {
-		pokeClient.getPokemons(151).then((res) => {
-			setPokemonData(res.results);
+		pokeClient.getPokemons(GEN_1_POKEMONS).then((res) => {
+			setPokemonData(res);
 			setIsLoading(false);
 		});
 	}, []);
@@ -28,7 +28,7 @@ function Main() {
 				<nav className="nav py-5 flex align-center font-extrabold">
 					<a
 						className="ml-2 p-1 bg-white border border-gray-500 rounded-l"
-						href="#"
+						href="/"
 					>
 						Pokemon
 					</a>
@@ -39,4 +39,4 @@ function Main() {
 	);
 }
 
-export default Main;
+export default App;

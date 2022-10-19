@@ -1,49 +1,21 @@
 import React from "react";
-import { useEffect } from "react";
-import { useState } from "react";
-import PokeClient from "./PokeClient";
+import { useEffect, useState } from "react";
+import { pokeClient } from "./PokeClient";
 import "./styles.css";
-import { useInterval } from "./customHooks/CustomHooks";
+import useInterval from "../hooks/useInterval";
 import constants from "./gameConstants";
 
 function Game(props) {
 	const [gameData, setGameData] = useState({
-		correctPokemon: {},
 		allPokemons: [],
 		score: 0,
-		correctAnswer: false,
 		wasAnyButtonClicked: false,
 	});
 
-	const [imageBrightnessZero, setImageBrightnessZero] = useState(true);
-	const [isLoading, setIsLoading] = useState(true);
+	const [correctPokemon, setCorrectPokemon] = useState({});
+	const [showPokemonImage, setShowPokemonImage] = useState(true);
 	const [timeRemaining, setTimeRemaining] = useState(constants.timerValue);
-	const [timerEnded, setTimerEnded] = useState(false);
-
-	const pokeClient = new PokeClient();
-
-	let intervalRef = useInterval(createTimer, timerEnded ? null : 1000);
-
-	function createTimer() {
-		if (timeRemaining < 1) {
-			setTimerEnded(true);
-
-			setImageBrightnessZero(false);
-
-			setGameData((prevData) => ({
-				...prevData,
-				wasAnyButtonClicked: true,
-			}));
-
-			if (!gameData.wasAnyButtonClicked) {
-				setTimeout(restGameData, constants.timeoutBeforeClearance);
-			} else {
-				restGameData();
-			}
-		} else {
-			setTimeRemaining((prevTime) => prevTime - 1);
-		}
-	}
+	const [endTimer, setEndTimer] = useState(false);
 
 	useEffect(() => {
 		getGameData().then((res) => {
@@ -51,59 +23,66 @@ function Game(props) {
 				return { ...prevGameData, ...res };
 			});
 		});
-
-		setIsLoading(false);
 	}, []);
 
+	let intervalRef = useInterval(createTimer, endTimer ? null : 1000);
+
+	function createTimer() {
+		if (timeRemaining < 1) {
+			setEndTimer(true);
+
+			setShowPokemonImage(false);
+
+			setGameData((prevData) => ({
+				...prevData,
+				wasAnyButtonClicked: true,
+			}));
+
+			if (!gameData.wasAnyButtonClicked) {
+				setTimeout(resetGameData, constants.timeoutBeforeClearance);
+			} else {
+				resetGameData();
+			}
+		} else {
+			setTimeRemaining((prevTime) => prevTime - 1);
+		}
+	}
+
 	async function getGameData() {
-		let correctPokemon = await getRandomPokemonData();
-		let incorrectPokemons = [
-			await getRandomPokemonData(),
-			await getRandomPokemonData(),
-			await getRandomPokemonData(),
-		];
+		const randomPokemonFromPokedex = [...props.pokemonData]
+			.sort(() => Math.random() - 0.5)
+			.slice(0, 4);
 
-		let allPokemons = [correctPokemon, ...incorrectPokemons];
+		getPokemonData(randomPokemonFromPokedex[0]).then((pokemon) =>
+			setCorrectPokemon(pokemon)
+		);
 
-		allPokemons = allPokemons.sort(() => Math.random() - 0.7);
-
-		allPokemons = allPokemons.sort(() => Math.random() - 0.2);
-
-		allPokemons = allPokemons.sort(() => Math.random() - 0.5);
-
-		allPokemons = allPokemons.sort(() => Math.random() - 0.1);
+		const pokemons = await Promise.all(
+			randomPokemonFromPokedex.map(getPokemonData)
+		);
 
 		return {
-			correctPokemon: correctPokemon,
-			allPokemons: allPokemons,
+			allPokemons: pokemons,
 		};
 	}
 
-	async function getRandomPokemonData() {
-		let pokemonUrl =
-			props.pokemonData[
-				Math.floor(Math.random() * props.pokemonData.length)
-			].url;
+	async function getPokemonData({ url }) {
+		let pokemonData = await pokeClient.getPokemonByUrl(url);
 
-		let pokemonData = await pokeClient.getPokemonByUrl(pokemonUrl);
-
-		let data = {
+		return {
 			name: pokemonData.name,
 			imageUrl: pokemonData.sprites.front_default,
 		};
-
-		return data;
 	}
 
 	function handleButtonClick(event) {
 		const { value } = event.target;
 
-		setImageBrightnessZero(false);
+		setShowPokemonImage(false);
 
-		if (gameData.correctPokemon.name === value) {
+		if (correctPokemon.name === value) {
 			setGameData((prevData) => ({
 				...prevData,
-				correctAnswer: true,
 				wasAnyButtonClicked: true,
 				score: prevData.score + 1,
 			}));
@@ -120,33 +99,28 @@ function Game(props) {
 			}, constants.timeoutBeforeClearance);
 		}
 
-		setTimerEnded(true);
-		setTimeout(restGameData, constants.timeoutBeforeClearance);
+		setEndTimer(true);
+		setTimeout(resetGameData, constants.timeoutBeforeClearance);
 	}
 
-	function restGameData() {
-		setImageBrightnessZero(true);
+	function resetGameData() {
+		setShowPokemonImage(true);
 
 		getGameData().then((res) => {
 			setGameData((prevGameData) => ({
 				...prevGameData,
 				...res,
-				correctAnswer: false,
 				wasAnyButtonClicked: false,
 			}));
 		});
 
 		setTimeRemaining(constants.timerValue);
-		setTimerEnded(false);
+		setEndTimer(false);
 	}
 
 	function endGame() {
 		alert(`You final score was ${gameData.score}`);
 		window.clearInterval(intervalRef.current);
-	}
-
-	if (isLoading) {
-		return <h1>Lading Data....</h1>;
 	}
 
 	return (
@@ -161,30 +135,34 @@ function Game(props) {
 				</button>
 			</div>
 			<h1 className="mt-5 text-xl font-extrabold text-center">
-				Whos's that pokemon?
+				Who's that pokemon?
 			</h1>
 			<div className="grid mx-auto md:w-[75%] m-5 gap-3 place-items-center grid-cols-2">
 				<div className="img-container col-span-2">
-					<img
-						className={`img h-full w-full object-cover ${
-							imageBrightnessZero
-								? "brightness0"
-								: "brightness100"
-						}`}
-						src={gameData.correctPokemon.imageUrl}
-						alt={gameData.correctPokemon.name}
-					/>
-
+					{showPokemonImage ? (
+						<img
+							className="img h-full w-full object-cover brightness0"
+							src={correctPokemon.imageUrl}
+							alt={correctPokemon.name}
+						/>
+					) : (
+						<img
+							className="img h-full w-full object-cover brightness100"
+							src={correctPokemon.imageUrl}
+							alt={correctPokemon.name}
+						/>
+					)}
 					<div className="timer">{timeRemaining}</div>
 				</div>
 				{gameData.allPokemons.map((pokemon) => {
 					let rightAnswer =
 						gameData.wasAnyButtonClicked &&
-						pokemon.name === gameData.correctPokemon.name
+						pokemon.name === correctPokemon.name
 							? "right"
 							: "";
 					return (
 						<button
+							key={pokemon.name}
 							onClick={handleButtonClick}
 							value={pokemon.name}
 							disabled={gameData.wasAnyButtonClicked}
