@@ -4,6 +4,7 @@ import { pokeClient } from "./PokeClient";
 import "./styles.css";
 import useInterval from "../hooks/useInterval";
 import constants from "./gameConstants";
+import PokemonImage from "./PokemonImage";
 
 function Game(props) {
 	const [gameData, setGameData] = useState({
@@ -13,7 +14,7 @@ function Game(props) {
 	});
 
 	const [correctPokemon, setCorrectPokemon] = useState({});
-	const [showPokemonImage, setShowPokemonImage] = useState(true);
+	const [showPokemonImage, setShowPokemonImage] = useState(false);
 	const [timeRemaining, setTimeRemaining] = useState(constants.timerValue);
 	const [endTimer, setEndTimer] = useState(false);
 
@@ -31,7 +32,7 @@ function Game(props) {
 		if (timeRemaining < 1) {
 			setEndTimer(true);
 
-			setShowPokemonImage(false);
+			setShowPokemonImage(true);
 
 			setGameData((prevData) => ({
 				...prevData,
@@ -78,7 +79,7 @@ function Game(props) {
 	function handleButtonClick(event) {
 		const { value } = event.target;
 
-		setShowPokemonImage(false);
+		setShowPokemonImage(true);
 
 		if (correctPokemon.name === value) {
 			setGameData((prevData) => ({
@@ -104,7 +105,7 @@ function Game(props) {
 	}
 
 	function resetGameData() {
-		setShowPokemonImage(true);
+		setShowPokemonImage(false);
 
 		getGameData().then((res) => {
 			setGameData((prevGameData) => ({
@@ -139,19 +140,11 @@ function Game(props) {
 			</h1>
 			<div className="grid mx-auto md:w-[75%] m-5 gap-3 place-items-center grid-cols-2">
 				<div className="img-container col-span-2">
-					{showPokemonImage ? (
-						<img
-							className="img h-full w-full object-cover brightness0"
-							src={correctPokemon.imageUrl}
-							alt={correctPokemon.name}
-						/>
-					) : (
-						<img
-							className="img h-full w-full object-cover brightness100"
-							src={correctPokemon.imageUrl}
-							alt={correctPokemon.name}
-						/>
-					)}
+					<PokemonImage
+						key={correctPokemon.name + ":" + showPokemonImage}
+						showPokemonImage={showPokemonImage}
+						correctPokemon={correctPokemon}
+					/>
 					<div className="timer">{timeRemaining}</div>
 				</div>
 				{gameData.allPokemons.map((pokemon) => {
