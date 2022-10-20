@@ -62,8 +62,12 @@ function Game(props) {
 			randomPokemonFromPokedex.map(getPokemonData)
 		);
 
+		pokemons.sort(() => Math.random() - 0.5);
+		pokemons.sort(() => Math.random() - 0.5);
+		pokemons.sort(() => Math.random() - 0.5);
+
 		return {
-			allPokemons: pokemons,
+			allPokemons: pokemons.sort(() => Math.random() - 0.5),
 		};
 	}
 
