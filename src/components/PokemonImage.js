@@ -1,39 +1,20 @@
-import React from "react";
-import { useEffect, useState } from "react";
-import Spinner from "./Spinner";
+import React from 'react';
 
-function PokemonImage({ showPokemonImage, correctPokemon }) {
-	const [pokemonUrl, setPokemonUrl] = useState("");
-	const [loading, setIsLoading] = useState(true);
-
-	useEffect(() => {
-		setIsLoading(false);
-	}, [pokemonUrl]);
-
-	useEffect(() => {
-		setIsLoading(true);
-
-		fetch(correctPokemon.imageUrl)
-			.then((response) => response.blob())
-			.then((imageBlob) => setPokemonUrl(URL.createObjectURL(imageBlob)));
-	}, []);
-
-	if (loading) {
-		return <Spinner bgColor={"#fff"} />;
-	}
-
-	return (
-		<img
-			style={
-				showPokemonImage
-					? { filter: "brightness(100%)" }
-					: { filter: "brightness(0%)" }
-			}
-			className="img h-full w-full object-cover"
-			src={pokemonUrl}
-			alt={correctPokemon.name}
-		/>
-	);
+function PokemonImage({ showPokemonImage, correctPokemonImageUrl }) {
+  return (
+    <img
+      style={
+        showPokemonImage
+          ? { filter: 'brightness(100%)' }
+          : { filter: 'brightness(0%)' }
+      }
+      className='img object-cover'
+      src={correctPokemonImageUrl}
+      alt=''
+      height={100}
+      width={100}
+    />
+  );
 }
 
 export default PokemonImage;

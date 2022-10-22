@@ -5,12 +5,17 @@ import { pokeClient } from './PokeClient';
 import Game from './Game';
 import './styles.css';
 
-//TODO: move this to constant file
+//TODO: move this to constant
 const GEN_1_POKEMONS = 151;
 
 /**
  *
  * ? possibility to use React Query
+ * * Get a random pokemon and whenever a new one appears,
+ * * reset the countdown timer. As soon as it reaches 0, show
+ * * correct answer by highlight the button with correct answer (green).
+ * * If the user clicks on the wrong choice, the timer stops, show both the
+ * * wrong and correct button (red and green) and generate new pokemon.
  * @returns
  */
 function App() {
@@ -42,7 +47,8 @@ function App() {
           </a>
         </nav>
       </header>
-      <Game pokemonData={pokemonData} />
+      {/* <Game pokemonData={pokemonData} /> */}
+      <Game />
     </>
   );
 }

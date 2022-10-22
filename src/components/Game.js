@@ -5,6 +5,12 @@ import './styles.css';
 import useInterval from '../hooks/useInterval';
 import constants from './gameConstants';
 import PokemonImage from './PokemonImage';
+import {
+  getPokemonDataFromUrl,
+  getPokemonFromPokedexId,
+} from '../services/get-pokemon';
+import { getRandomNumberBetweenRange } from '../utils/generate-random-number';
+import Spinner from './Spinner';
 
 function Game(props) {
   const [gameData, setGameData] = useState({
@@ -182,4 +188,68 @@ function Game(props) {
   );
 }
 
-export default Game;
+function GameTest(props) {
+  const [loading, setLoading] = useState(true);
+  const [pokemonData, setPokemonData] = useState({
+    pokemonToGuess: undefined,
+    otherPokemons: undefined,
+  });
+
+  //? possibility to use usePromise hook
+  const getRandomPokemon = async () => {
+    try {
+      /* take into consideration the possibility that one of them might be rejected
+      do not proceed if at least one of them is rejected */
+      const promiseResults = await Promise.allSettled(
+        [...Array(4)]
+          .fill(getRandomNumberBetweenRange({ end: 151 }))
+          .map(getPokemonFromPokedexId)
+      );
+
+      let fourPokemons = [];
+
+      for (const promise of promiseResults) {
+        if (promise.status === 'rejected') {
+          const { reason } = promise;
+          throw new Error(reason);
+        } else {
+          fourPokemons = [...fourPokemons, promise.value];
+        }
+      }
+
+      // * At this point I know that all of the four pokemons
+      // * data are available
+      const [pokemonToGuess, ...restPokemons] = fourPokemons;
+
+      setPokemonData({ pokemonToGuess, otherPokemons: restPokemons });
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getRandomPokemon();
+  }, []);
+
+  if (loading) return <Spinner bgColor={'#fff'} />;
+  if (typeof pokemonData.pokemonToGuess === 'undefined') return;
+
+  return (
+    <div>
+      <h1 className='mt-5 text-xl font-extrabold text-center'>
+        Who's that pokemon?
+      </h1>
+      <PokemonImage
+        showPokemonImage
+        correctPokemonImageUrl={
+          pokemonData.pokemonToGuess.sprites.front_default
+        }
+      />
+    </div>
+  );
+}
+
+//export default Game;
+export default GameTest;
