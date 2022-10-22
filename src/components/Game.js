@@ -200,6 +200,7 @@ function GameTest(props) {
     try {
       /* take into consideration the possibility that one of them might be rejected
       do not proceed if at least one of them is rejected */
+      //! when generating random numbers could happen that there would be more of the same
       const promiseResults = await Promise.allSettled(
         [...Array(4)]
           .fill(getRandomNumberBetweenRange({ end: 151 }))
