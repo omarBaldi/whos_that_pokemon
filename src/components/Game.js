@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useEffect, useState } from 'react';
 import { pokeClient } from './PokeClient';
 import './styles.css';
@@ -270,6 +270,19 @@ function GameTest() {
     //? add "round" variable to dependency array for getting pokemon data (line 251)
   }, [pokemonClicked, pokemonData.pokemonToGuess]);
 
+  const pokemonsChoices = useMemo(() => {
+    let shuffledArr = [];
+
+    if (typeof pokemonData.pokemonToGuess !== 'undefined') {
+      shuffledArr = shuffleArray([
+        pokemonData.pokemonToGuess,
+        ...(pokemonData.otherPokemons ?? []),
+      ]);
+    }
+
+    return shuffledArr;
+  }, [pokemonData]);
+
   if (loading) return <Spinner bgColor={'#fff'} />;
   if (typeof pokemonData.pokemonToGuess === 'undefined') return;
 
@@ -286,10 +299,7 @@ function GameTest() {
         correctPokemonImageUrl={pokemonImage}
       />
       <div style={{ display: 'flex', justifyContent: 'center' }}>
-        {shuffleArray([
-          pokemonData.pokemonToGuess,
-          ...pokemonData.otherPokemons,
-        ]).map((pokemon, _index) => {
+        {pokemonsChoices.map((pokemon, _index) => {
           /* If a pokemon has been selected, compare it to the current
           pokemon option and return either true/false if same/different.
           If not selected then, return an empty string */
