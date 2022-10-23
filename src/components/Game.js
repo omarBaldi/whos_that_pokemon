@@ -11,6 +11,8 @@ import {
 } from '../services/get-pokemon';
 import { getRandomNumberBetweenRange } from '../utils/generate-random-number';
 import Spinner from './Spinner';
+import { useRef } from 'react';
+import { shuffleArray } from '../utils/shuffle-array';
 
 function Game(props) {
   const [gameData, setGameData] = useState({
@@ -188,8 +190,20 @@ function Game(props) {
   );
 }
 
-function GameTest(props) {
+/**
+ *
+ * TODO: create button component
+ * TODO: add variable for keeping track of number of rounds
+ */
+function GameTest() {
   const [loading, setLoading] = useState(true);
+
+  //? replacing with useState depending wheter or not render the UI on web view
+  const currentScore = useRef(0);
+  const showPokemon = useRef(false);
+
+  const [pokemonClicked, setPokemonClicked] = useState(undefined);
+
   const [pokemonData, setPokemonData] = useState({
     pokemonToGuess: undefined,
     otherPokemons: undefined,
@@ -203,7 +217,7 @@ function GameTest(props) {
       //! when generating random numbers could happen that there would be more of the same
       const promiseResults = await Promise.allSettled(
         [...Array(4)]
-          .fill(getRandomNumberBetweenRange({ end: 151 }))
+          .map(() => getRandomNumberBetweenRange({ start: 1, end: 151 }))
           .map(getPokemonFromPokedexId)
       );
 
@@ -232,10 +246,35 @@ function GameTest(props) {
 
   useEffect(() => {
     getRandomPokemon();
+
+    return () => {
+      // * reset values on component unmount
+      setPokemonData({ pokemonToGuess: undefined, otherPokemons: undefined });
+    };
   }, []);
+
+  useEffect(() => {
+    if (typeof pokemonClicked === 'undefined') return;
+
+    const { name: pokemonSelectedName } = pokemonClicked;
+
+    //TODO: stop timer
+
+    /* At this point I need to check if the name of the pokemon
+    selected is the same as the pokemon to guess */
+    if (pokemonSelectedName === pokemonData.pokemonToGuess) {
+      currentScore.current += 1;
+    }
+
+    //TODO: go to next round
+    //? add "round" variable to dependency array for getting pokemon data (line 251)
+  }, [pokemonClicked, pokemonData.pokemonToGuess]);
 
   if (loading) return <Spinner bgColor={'#fff'} />;
   if (typeof pokemonData.pokemonToGuess === 'undefined') return;
+
+  const pokemonImage = pokemonData.pokemonToGuess.sprites.front_default;
+  const shouldButtonsBeDisabled = !!pokemonClicked;
 
   return (
     <div>
@@ -243,11 +282,38 @@ function GameTest(props) {
         Who's that pokemon?
       </h1>
       <PokemonImage
-        showPokemonImage
-        correctPokemonImageUrl={
-          pokemonData.pokemonToGuess.sprites.front_default
-        }
+        showPokemonImage={showPokemon.current}
+        correctPokemonImageUrl={pokemonImage}
       />
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        {shuffleArray([
+          pokemonData.pokemonToGuess,
+          ...pokemonData.otherPokemons,
+        ]).map((pokemon, _index) => {
+          /* If a pokemon has been selected, compare it to the current
+          pokemon option and return either true/false if same/different.
+          If not selected then, return an empty string */
+          const dynamicButtonClass =
+            typeof pokemonClicked === 'undefined'
+              ? ''
+              : pokemonClicked.name === pokemon.name
+              ? 'right'
+              : 'wrong';
+
+          return (
+            <button
+              key={pokemon.name}
+              onClick={() => setPokemonClicked(pokemon)}
+              value={pokemon.name}
+              disabled={shouldButtonsBeDisabled}
+              className={`btn ${dynamicButtonClass}`}
+              style={{ margin: '0 1rem' }}
+            >
+              {pokemon.name}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -1,11 +1,11 @@
-import React from "react";
+import React from 'react';
 
 function Spinner({ bgColor }) {
-	return (
-		<div className="spinner">
-			<div style={{ backgroundColor: bgColor }} class="circle-core"></div>
-		</div>
-	);
+  return (
+    <div className='spinner'>
+      <div style={{ backgroundColor: bgColor }} className='circle-core'></div>
+    </div>
+  );
 }
 
 export default Spinner;
