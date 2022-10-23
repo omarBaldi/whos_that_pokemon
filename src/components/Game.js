@@ -1,18 +1,14 @@
-import React, { useMemo } from 'react';
-import { useEffect, useState } from 'react';
-import { pokeClient } from './PokeClient';
-import './styles.css';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import useInterval from '../hooks/useInterval';
+import { shuffleArray } from '../utils/shuffle-array';
+import { wait } from '../utils/wait';
+import { pokeClient } from './PokeClient';
 import constants from './gameConstants';
 import PokemonImage from './PokemonImage';
-import {
-  getPokemonDataFromUrl,
-  getPokemonFromPokedexId,
-} from '../services/get-pokemon';
+import { getPokemonFromPokedexId } from '../services/get-pokemon';
 import { getRandomNumberBetweenRange } from '../utils/generate-random-number';
 import Spinner from './Spinner';
-import { useRef } from 'react';
-import { shuffleArray } from '../utils/shuffle-array';
+import './styles.css';
 
 function Game(props) {
   const [gameData, setGameData] = useState({
@@ -192,6 +188,7 @@ function Game(props) {
 
 /**
  *
+ * ? take in consideration of replacing multiple useState hooks with useReducer
  * TODO: create button component
  * TODO: add variable for keeping track of number of rounds
  */
@@ -200,8 +197,9 @@ function GameTest() {
 
   //? replacing with useState depending wheter or not render the UI on web view
   const currentScore = useRef(0);
-  const showPokemon = useRef(false);
 
+  const [round, setRound] = useState(1);
+  const [showPokemon, setShowPokemon] = useState(false);
   const [pokemonClicked, setPokemonClicked] = useState(undefined);
 
   const [pokemonData, setPokemonData] = useState({
@@ -251,12 +249,14 @@ function GameTest() {
       // * reset values on component unmount
       setPokemonData({ pokemonToGuess: undefined, otherPokemons: undefined });
     };
-  }, []);
+  }, [round]);
 
   useEffect(() => {
     if (typeof pokemonClicked === 'undefined') return;
 
     const { name: pokemonSelectedName } = pokemonClicked;
+
+    setShowPokemon(true);
 
     //TODO: stop timer
 
@@ -265,6 +265,12 @@ function GameTest() {
     if (pokemonSelectedName === pokemonData.pokemonToGuess) {
       currentScore.current += 1;
     }
+
+    wait(5000).then(() => setRound((prevRound) => prevRound + 1));
+
+    return () => {
+      setPokemonClicked(undefined);
+    };
 
     //TODO: go to next round
     //? add "round" variable to dependency array for getting pokemon data (line 251)
@@ -295,7 +301,7 @@ function GameTest() {
         Who's that pokemon?
       </h1>
       <PokemonImage
-        showPokemonImage={showPokemon.current}
+        showPokemonImage={showPokemon}
         correctPokemonImageUrl={pokemonImage}
       />
       <div style={{ display: 'flex', justifyContent: 'center' }}>
