@@ -1,0 +1,4 @@
+export const MAX_NUMBER_ROUNDS = 5;
+export const TOTAL_NUMBER_POKEMONS = 151;
+export const DEFAULT_POKEMON_CHOICES = 4;
+export const DEFAULT_SECONDS_UNTIL_NEXT_ROUND = 5;
