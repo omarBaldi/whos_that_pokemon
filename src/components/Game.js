@@ -19,6 +19,7 @@ import {
   updatePokemonsData,
   updatePokemonVisibility,
 } from '../actions-creators/pokemon-actions-creators';
+import PokemonOptions from './pokemonOptions';
 
 const initialReducerState = {
   loading: false,
@@ -33,7 +34,7 @@ const initialReducerState = {
 
 /**
  *
- * ? take in consideration of replacing multiple useState hooks with useReducer
+ * TODO: create pokemons choices component
  * TODO: create button component
  * TODO: create title component
  */
@@ -99,7 +100,7 @@ function GameTest() {
     secondsLeft: currentRoundSeconds,
     stopCountdown: stopCountdownCurrentRound,
   } = useCountdown({
-    initialValue: 10,
+    initialValue: 60,
     deps: useMemo(() => [round], [round]),
   });
 
@@ -151,19 +152,6 @@ function GameTest() {
     }
   }, [secondsLeftUntilNextRound]);
 
-  const pokemonsChoices = useMemo(() => {
-    let shuffledArr = [];
-
-    if (typeof pokemonData.pokemonToGuess !== 'undefined') {
-      shuffledArr = shuffleArray([
-        pokemonData.pokemonToGuess,
-        ...(pokemonData.otherPokemons ?? []),
-      ]);
-    }
-
-    return shuffledArr;
-  }, [pokemonData]);
-
   if (round > MAX_NUMBER_ROUNDS) {
     //TODO: render table showing the pokemon name,...
     //TODO: ...pokemon id and the time it took to reply to the question
@@ -177,7 +165,6 @@ function GameTest() {
   const roundsLabel = `${round} of ${MAX_NUMBER_ROUNDS} rounds`;
   const secondsLeftLabel = `${secondsLeftUntilNextRound} seconds until next round`;
   const currentRoundFinished = currentRoundSeconds <= 0;
-  const shouldButtonsBeDisabled = !!pokemonClicked || currentRoundFinished;
 
   return (
     <div style={{ padding: '3rem' }}>
@@ -214,38 +201,18 @@ function GameTest() {
         <h1 className='mt-5 text-xl font-extrabold text-center'>
           Who's that pokemon?
         </h1>
+
         <PokemonImage
           showPokemonImage={showPokemon}
           correctPokemonImageUrl={pokemonImage}
         />
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          {pokemonsChoices.map((pokemon, _index) => {
-            /* If a pokemon has been selected, compare it to the current
-          pokemon option and return either true/false if same/different.
-          If not selected then, return an empty string */
 
-            //TODO: refactor dynamic class part
-            const dynamicButtonClass =
-              typeof pokemonClicked === 'undefined'
-                ? ''
-                : pokemonClicked.name === pokemon.name
-                ? 'right'
-                : 'wrong';
-
-            return (
-              <button
-                key={pokemon.name}
-                onClick={() => dispatch(updatePokemonClicked(pokemon))}
-                value={pokemon.name}
-                disabled={shouldButtonsBeDisabled}
-                className={`btn ${dynamicButtonClass}`}
-                style={{ margin: '0 1rem' }}
-              >
-                {pokemon.name}
-              </button>
-            );
-          })}
-        </div>
+        <PokemonOptions
+          pokemons={pokemonData}
+          pokemonClicked={pokemonClicked}
+          shouldOptionsBeDisabled={!!pokemonClicked || currentRoundFinished}
+          dispatch={dispatch}
+        />
       </>
     </div>
   );
