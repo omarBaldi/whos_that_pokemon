@@ -1,7 +1,6 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import useInterval from '../hooks/useInterval';
 import { shuffleArray } from '../utils/shuffle-array';
-import { wait } from '../utils/wait';
 import { pokeClient } from './PokeClient';
 import constants from './gameConstants';
 import PokemonImage from './PokemonImage';
@@ -9,6 +8,12 @@ import { getPokemonFromPokedexId } from '../services/get-pokemon';
 import { getRandomNumberBetweenRange } from '../utils/generate-random-number';
 import Spinner from './Spinner';
 import './styles.css';
+import {
+  DEFAULT_POKEMON_CHOICES,
+  DEFAULT_SECONDS_UNTIL_NEXT_ROUND,
+  MAX_NUMBER_ROUNDS,
+  TOTAL_NUMBER_POKEMONS,
+} from '../constant';
 
 function Game(props) {
   const [gameData, setGameData] = useState({
@@ -190,7 +195,7 @@ function Game(props) {
  *
  * ? take in consideration of replacing multiple useState hooks with useReducer
  * TODO: create button component
- * TODO: add variable for keeping track of number of rounds
+ * TODO: create title component
  */
 function GameTest() {
   const [loading, setLoading] = useState(true);
@@ -201,6 +206,11 @@ function GameTest() {
   const [round, setRound] = useState(1);
   const [showPokemon, setShowPokemon] = useState(false);
   const [pokemonClicked, setPokemonClicked] = useState(undefined);
+
+  const countdownNextPokemonQuizRef = useRef();
+  const [secondsLeftUntilNextRound, setSecondsLeftUntilNextRound] = useState(
+    DEFAULT_SECONDS_UNTIL_NEXT_ROUND
+  );
 
   const [pokemonData, setPokemonData] = useState({
     pokemonToGuess: undefined,
@@ -214,29 +224,36 @@ function GameTest() {
       do not proceed if at least one of them is rejected */
       //! when generating random numbers could happen that there would be more of the same
       const promiseResults = await Promise.allSettled(
-        [...Array(4)]
-          .map(() => getRandomNumberBetweenRange({ start: 1, end: 151 }))
+        [...Array(DEFAULT_POKEMON_CHOICES)]
+          .map(() =>
+            getRandomNumberBetweenRange({
+              start: 1,
+              end: TOTAL_NUMBER_POKEMONS,
+            })
+          )
           .map(getPokemonFromPokedexId)
       );
 
-      let fourPokemons = [];
+      let pokemonResults = [];
 
       for (const promise of promiseResults) {
         if (promise.status === 'rejected') {
           const { reason } = promise;
           throw new Error(reason);
         } else {
-          fourPokemons = [...fourPokemons, promise.value];
+          const { value: pokemonData } = promise;
+
+          pokemonResults = [...pokemonResults, pokemonData];
         }
       }
 
       // * At this point I know that all of the four pokemons
       // * data are available
-      const [pokemonToGuess, ...restPokemons] = fourPokemons;
+      const [pokemonToGuess, ...restPokemons] = pokemonResults;
 
       setPokemonData({ pokemonToGuess, otherPokemons: restPokemons });
     } catch (err) {
-      console.log(err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -248,6 +265,8 @@ function GameTest() {
     return () => {
       // * reset values on component unmount
       setPokemonData({ pokemonToGuess: undefined, otherPokemons: undefined });
+      setPokemonClicked(undefined);
+      setSecondsLeftUntilNextRound(DEFAULT_SECONDS_UNTIL_NEXT_ROUND);
     };
   }, [round]);
 
@@ -262,19 +281,23 @@ function GameTest() {
 
     /* At this point I need to check if the name of the pokemon
     selected is the same as the pokemon to guess */
-    if (pokemonSelectedName === pokemonData.pokemonToGuess) {
+    if (pokemonSelectedName === pokemonData.pokemonToGuess.name) {
       currentScore.current += 1;
     }
 
-    wait(5000).then(() => setRound((prevRound) => prevRound + 1));
-
-    return () => {
-      setPokemonClicked(undefined);
-    };
-
-    //TODO: go to next round
-    //? add "round" variable to dependency array for getting pokemon data (line 251)
+    //? possibility to create custom hook for using setInterval (deps as dependencies array ---> [...deps])
+    countdownNextPokemonQuizRef.current = setInterval(
+      () => setSecondsLeftUntilNextRound((prevSeconds) => prevSeconds - 1),
+      1000
+    );
   }, [pokemonClicked, pokemonData.pokemonToGuess]);
+
+  useEffect(() => {
+    if (secondsLeftUntilNextRound <= 0) {
+      clearInterval(countdownNextPokemonQuizRef.current);
+      setRound((prevRound) => prevRound + 1);
+    }
+  }, [secondsLeftUntilNextRound]);
 
   const pokemonsChoices = useMemo(() => {
     let shuffledArr = [];
@@ -291,45 +314,83 @@ function GameTest() {
 
   if (loading) return <Spinner bgColor={'#fff'} />;
   if (typeof pokemonData.pokemonToGuess === 'undefined') return;
+  if (round === MAX_NUMBER_ROUNDS) {
+    //TODO: render table showing the pokemon name,...
+    //TODO: ...pokemon id and the time it took to reply to the question
+    //TODO: also the unanswered questions
+    return <h1>You totalized an amount of {currentScore.current}</h1>;
+  }
 
   const pokemonImage = pokemonData.pokemonToGuess.sprites.front_default;
   const shouldButtonsBeDisabled = !!pokemonClicked;
+  const roundsLabel = `${round} of ${MAX_NUMBER_ROUNDS} rounds`;
+  const secondsLeftLabel = `${secondsLeftUntilNextRound} seconds until next round`;
 
   return (
-    <div>
-      <h1 className='mt-5 text-xl font-extrabold text-center'>
-        Who's that pokemon?
-      </h1>
-      <PokemonImage
-        showPokemonImage={showPokemon}
-        correctPokemonImageUrl={pokemonImage}
-      />
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        {pokemonsChoices.map((pokemon, _index) => {
-          /* If a pokemon has been selected, compare it to the current
+    <div style={{ padding: '3rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1rem',
+        }}
+      >
+        <h1
+          style={{
+            fontSize: '2em',
+          }}
+        >
+          {roundsLabel}
+        </h1>
+        {pokemonClicked && secondsLeftUntilNextRound > 0 && (
+          <h1
+            style={{
+              fontSize: '2em',
+            }}
+          >
+            {secondsLeftLabel}
+          </h1>
+        )}
+      </div>
+
+      <>
+        <h1 className='mt-5 text-xl font-extrabold text-center'>
+          Who's that pokemon?
+        </h1>
+        <PokemonImage
+          showPokemonImage={showPokemon}
+          correctPokemonImageUrl={pokemonImage}
+        />
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          {pokemonsChoices.map((pokemon, _index) => {
+            /* If a pokemon has been selected, compare it to the current
           pokemon option and return either true/false if same/different.
           If not selected then, return an empty string */
-          const dynamicButtonClass =
-            typeof pokemonClicked === 'undefined'
-              ? ''
-              : pokemonClicked.name === pokemon.name
-              ? 'right'
-              : 'wrong';
 
-          return (
-            <button
-              key={pokemon.name}
-              onClick={() => setPokemonClicked(pokemon)}
-              value={pokemon.name}
-              disabled={shouldButtonsBeDisabled}
-              className={`btn ${dynamicButtonClass}`}
-              style={{ margin: '0 1rem' }}
-            >
-              {pokemon.name}
-            </button>
-          );
-        })}
-      </div>
+            //TODO: refactor dynamic class part
+            const dynamicButtonClass =
+              typeof pokemonClicked === 'undefined'
+                ? ''
+                : pokemonClicked.name === pokemon.name
+                ? 'right'
+                : 'wrong';
+
+            return (
+              <button
+                key={pokemon.name}
+                onClick={() => setPokemonClicked(pokemon)}
+                value={pokemon.name}
+                disabled={shouldButtonsBeDisabled}
+                className={`btn ${dynamicButtonClass}`}
+                style={{ margin: '0 1rem' }}
+              >
+                {pokemon.name}
+              </button>
+            );
+          })}
+        </div>
+      </>
     </div>
   );
 }
