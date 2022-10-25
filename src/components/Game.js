@@ -207,6 +207,10 @@ function GameTest() {
   const [showPokemon, setShowPokemon] = useState(false);
   const [pokemonClicked, setPokemonClicked] = useState(undefined);
 
+  /* *---------------------------------- CURRENT ROUND STATE */
+  const currentRoundCountdown = useRef();
+  const [currentRoundSeconds, setCurrentRoundSeconds] = useState(10);
+  /* *---------------------------------- TIME TO NEXT ROUND STATE */
   const countdownNextPokemonQuizRef = useRef();
   const [secondsLeftUntilNextRound, setSecondsLeftUntilNextRound] = useState(
     DEFAULT_SECONDS_UNTIL_NEXT_ROUND
@@ -260,37 +264,46 @@ function GameTest() {
   };
 
   useEffect(() => {
+    if (round > MAX_NUMBER_ROUNDS) return;
+
     getRandomPokemon();
+
+    //TODO: implement custom hook for setInterval with pokemonData.pokemonToGuess as dependency [...deps]
+    currentRoundCountdown.current = setInterval(
+      () => setCurrentRoundSeconds((prevSeconds) => prevSeconds - 1),
+      1000
+    );
 
     return () => {
       // * reset values on component unmount
       setPokemonData({ pokemonToGuess: undefined, otherPokemons: undefined });
       setPokemonClicked(undefined);
       setSecondsLeftUntilNextRound(DEFAULT_SECONDS_UNTIL_NEXT_ROUND);
+      setCurrentRoundSeconds(10);
     };
   }, [round]);
 
   useEffect(() => {
-    if (typeof pokemonClicked === 'undefined') return;
+    if (pokemonClicked || currentRoundSeconds <= 0) {
+      setShowPokemon(true);
+      //NOTE: if the user clicks on one of the pokemon choices
+      //before the timer expires, then stop it
+      clearInterval(currentRoundCountdown.current);
 
-    const { name: pokemonSelectedName } = pokemonClicked;
+      if (
+        typeof pokemonClicked !== 'undefined' &&
+        pokemonClicked.name === pokemonData.pokemonToGuess.name
+      ) {
+        currentScore.current += 1;
+      }
 
-    setShowPokemon(true);
-
-    //TODO: stop timer
-
-    /* At this point I need to check if the name of the pokemon
-    selected is the same as the pokemon to guess */
-    if (pokemonSelectedName === pokemonData.pokemonToGuess.name) {
-      currentScore.current += 1;
+      //? possibility to create custom hook for using setInterval (deps as dependencies array ---> [...deps])
+      countdownNextPokemonQuizRef.current = setInterval(
+        () => setSecondsLeftUntilNextRound((prevSeconds) => prevSeconds - 1),
+        1000
+      );
     }
-
-    //? possibility to create custom hook for using setInterval (deps as dependencies array ---> [...deps])
-    countdownNextPokemonQuizRef.current = setInterval(
-      () => setSecondsLeftUntilNextRound((prevSeconds) => prevSeconds - 1),
-      1000
-    );
-  }, [pokemonClicked, pokemonData.pokemonToGuess]);
+  }, [pokemonClicked, pokemonData.pokemonToGuess, currentRoundSeconds]);
 
   useEffect(() => {
     if (secondsLeftUntilNextRound <= 0) {
@@ -314,7 +327,7 @@ function GameTest() {
 
   if (loading) return <Spinner bgColor={'#fff'} />;
   if (typeof pokemonData.pokemonToGuess === 'undefined') return;
-  if (round === MAX_NUMBER_ROUNDS) {
+  if (round > MAX_NUMBER_ROUNDS) {
     //TODO: render table showing the pokemon name,...
     //TODO: ...pokemon id and the time it took to reply to the question
     //TODO: also the unanswered questions
@@ -322,9 +335,10 @@ function GameTest() {
   }
 
   const pokemonImage = pokemonData.pokemonToGuess.sprites.front_default;
-  const shouldButtonsBeDisabled = !!pokemonClicked;
   const roundsLabel = `${round} of ${MAX_NUMBER_ROUNDS} rounds`;
   const secondsLeftLabel = `${secondsLeftUntilNextRound} seconds until next round`;
+  const currentRoundFinished = currentRoundSeconds <= 0;
+  const shouldButtonsBeDisabled = !!pokemonClicked || currentRoundFinished;
 
   return (
     <div style={{ padding: '3rem' }}>
@@ -343,16 +357,19 @@ function GameTest() {
         >
           {roundsLabel}
         </h1>
-        {pokemonClicked && secondsLeftUntilNextRound > 0 && (
-          <h1
-            style={{
-              fontSize: '2em',
-            }}
-          >
-            {secondsLeftLabel}
-          </h1>
-        )}
+        {(pokemonClicked || currentRoundFinished) &&
+          secondsLeftUntilNextRound > 0 && (
+            <h1
+              style={{
+                fontSize: '2em',
+              }}
+            >
+              {secondsLeftLabel}
+            </h1>
+          )}
       </div>
+
+      {currentRoundSeconds > 0 && <h1>{currentRoundSeconds} seconds left</h1>}
 
       <>
         <h1 className='mt-5 text-xl font-extrabold text-center'>
