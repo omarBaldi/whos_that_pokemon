@@ -325,14 +325,14 @@ function GameTest() {
     return shuffledArr;
   }, [pokemonData]);
 
-  if (loading) return <Spinner bgColor={'#fff'} />;
-  if (typeof pokemonData.pokemonToGuess === 'undefined') return;
   if (round > MAX_NUMBER_ROUNDS) {
     //TODO: render table showing the pokemon name,...
     //TODO: ...pokemon id and the time it took to reply to the question
     //TODO: also the unanswered questions
     return <h1>You totalized an amount of {currentScore.current}</h1>;
   }
+  if (loading) return <Spinner bgColor={'#fff'} />;
+  if (typeof pokemonData.pokemonToGuess === 'undefined') return;
 
   const pokemonImage = pokemonData.pokemonToGuess.sprites.front_default;
   const roundsLabel = `${round} of ${MAX_NUMBER_ROUNDS} rounds`;
