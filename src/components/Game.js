@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect, useState } from 'react';
+import React, { useMemo, useRef, useEffect, useState, useReducer } from 'react';
 import { getPokemonFromPokedexId } from '../services/pokemons';
 import { shuffleArray } from '../utils/shuffle-array';
 import { getRandomNumberBetweenRange } from '../utils/generate-random-number';
@@ -11,6 +11,25 @@ import {
   TOTAL_NUMBER_POKEMONS,
 } from '../constant';
 import { useCountdown } from '../hooks/useCountdown';
+import { pokemonReducer } from '../reducers/pokemon-reducer';
+import {
+  updateLoadingIndicator,
+  updateNumberRounds,
+  updatePokemonClicked,
+  updatePokemonsData,
+  updatePokemonVisibility,
+} from '../actions-creators/pokemon-actions-creators';
+
+const initialReducerState = {
+  loading: false,
+  round: 1,
+  showPokemon: false,
+  pokemonClicked: undefined,
+  pokemonData: {
+    pokemonToGuess: undefined,
+    otherPokemons: undefined,
+  },
+};
 
 /**
  *
@@ -19,25 +38,18 @@ import { useCountdown } from '../hooks/useCountdown';
  * TODO: create title component
  */
 function GameTest() {
-  const [loading, setLoading] = useState(true);
+  const [
+    { loading, round, showPokemon, pokemonClicked, pokemonData },
+    dispatch,
+  ] = useReducer(pokemonReducer, initialReducerState);
 
-  //? replacing with useState depending wheter or not render the UI on web view
   const currentScore = useRef(0);
-
-  const [round, setRound] = useState(1);
-  const [showPokemon, setShowPokemon] = useState(false);
-  const [pokemonClicked, setPokemonClicked] = useState(undefined);
 
   /* *---------------------------------- TIME TO NEXT ROUND STATE */
   const countdownNextPokemonQuizRef = useRef();
   const [secondsLeftUntilNextRound, setSecondsLeftUntilNextRound] = useState(
     DEFAULT_SECONDS_UNTIL_NEXT_ROUND
   );
-
-  const [pokemonData, setPokemonData] = useState({
-    pokemonToGuess: undefined,
-    otherPokemons: undefined,
-  });
 
   //? possibility to use usePromise hook
   const getRandomPokemon = async () => {
@@ -73,11 +85,13 @@ function GameTest() {
       // * data are available
       const [pokemonToGuess, ...restPokemons] = pokemonResults;
 
-      setPokemonData({ pokemonToGuess, otherPokemons: restPokemons });
+      dispatch(
+        updatePokemonsData({ pokemonToGuess, otherPokemons: restPokemons })
+      );
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      dispatch(updateLoadingIndicator(false));
     }
   };
 
@@ -94,23 +108,22 @@ function GameTest() {
 
     getRandomPokemon();
 
-    //TODO: implement custom hook for setInterval with pokemonData.pokemonToGuess as dependency [...deps]
-    /* currentRoundCountdown.current = setInterval(
-      () => setCurrentRoundSeconds((prevSeconds) => prevSeconds - 1),
-      1000
-    ); */
-
     return () => {
       // * reset values on component unmount
-      setPokemonData({ pokemonToGuess: undefined, otherPokemons: undefined });
-      setPokemonClicked(undefined);
+      dispatch(
+        updatePokemonsData({
+          pokemonToGuess: undefined,
+          otherPokemons: undefined,
+        })
+      );
+      dispatch(updatePokemonClicked(undefined));
       setSecondsLeftUntilNextRound(DEFAULT_SECONDS_UNTIL_NEXT_ROUND);
     };
   }, [round]);
 
   useEffect(() => {
     if (pokemonClicked || currentRoundSeconds <= 0) {
-      setShowPokemon(true);
+      dispatch(updatePokemonVisibility(true));
       //NOTE: if the user clicks on one of the pokemon choices
       //before the timer expires, then stop it
 
@@ -134,7 +147,7 @@ function GameTest() {
   useEffect(() => {
     if (secondsLeftUntilNextRound <= 0) {
       clearInterval(countdownNextPokemonQuizRef.current);
-      setRound((prevRound) => prevRound + 1);
+      dispatch(updateNumberRounds());
     }
   }, [secondsLeftUntilNextRound]);
 
@@ -222,7 +235,7 @@ function GameTest() {
             return (
               <button
                 key={pokemon.name}
-                onClick={() => setPokemonClicked(pokemon)}
+                onClick={() => dispatch(updatePokemonClicked(pokemon))}
                 value={pokemon.name}
                 disabled={shouldButtonsBeDisabled}
                 className={`btn ${dynamicButtonClass}`}
