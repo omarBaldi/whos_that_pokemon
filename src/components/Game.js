@@ -10,6 +10,7 @@ import {
   MAX_NUMBER_ROUNDS,
   TOTAL_NUMBER_POKEMONS,
 } from '../constant';
+import { useCountdown } from '../hooks/useCountdown';
 
 /**
  *
@@ -27,9 +28,6 @@ function GameTest() {
   const [showPokemon, setShowPokemon] = useState(false);
   const [pokemonClicked, setPokemonClicked] = useState(undefined);
 
-  /* *---------------------------------- CURRENT ROUND STATE */
-  const currentRoundCountdown = useRef();
-  const [currentRoundSeconds, setCurrentRoundSeconds] = useState(10);
   /* *---------------------------------- TIME TO NEXT ROUND STATE */
   const countdownNextPokemonQuizRef = useRef();
   const [secondsLeftUntilNextRound, setSecondsLeftUntilNextRound] = useState(
@@ -83,6 +81,14 @@ function GameTest() {
     }
   };
 
+  const {
+    secondsLeft: currentRoundSeconds,
+    stopCountdown: stopCountdownCurrentRound,
+  } = useCountdown({
+    initialValue: 10,
+    deps: useMemo(() => [round], [round]),
+  });
+
   useEffect(() => {
     if (round > MAX_NUMBER_ROUNDS) return;
 
@@ -99,7 +105,6 @@ function GameTest() {
       setPokemonData({ pokemonToGuess: undefined, otherPokemons: undefined });
       setPokemonClicked(undefined);
       setSecondsLeftUntilNextRound(DEFAULT_SECONDS_UNTIL_NEXT_ROUND);
-      setCurrentRoundSeconds(10);
     };
   }, [round]);
 
@@ -108,7 +113,8 @@ function GameTest() {
       setShowPokemon(true);
       //NOTE: if the user clicks on one of the pokemon choices
       //before the timer expires, then stop it
-      clearInterval(currentRoundCountdown.current);
+
+      stopCountdownCurrentRound();
 
       if (
         typeof pokemonClicked !== 'undefined' &&
